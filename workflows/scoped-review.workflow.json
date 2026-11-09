@@ -1,0 +1,38 @@
+{
+  "kind": "dsh.workflow",
+  "version": 1,
+  "name": "scoped-review",
+  "intent": "Review one target through several focus aspects in parallel, then return a single verdict.",
+  "whenToUse": "A change, file or branch needs a structured review with evidence and an explicit approve / request-changes verdict.",
+  "inputs": [
+    {
+      "name": "target",
+      "type": "string",
+      "required": true,
+      "description": "What to review: a path, a diff, a branch, or a precise change description."
+    },
+    {
+      "name": "focus",
+      "type": "array",
+      "description": "Review aspects. Defaults to correctness, security and maintainability."
+    },
+    {
+      "name": "max_findings",
+      "type": "integer",
+      "default": 6,
+      "description": "Maximum findings per reviewer."
+    }
+  ],
+  "phases": [
+    {
+      "title": "Review",
+      "detail": "One reviewer per focus aspect, running concurrently."
+    },
+    {
+      "title": "Verdict",
+      "detail": "One agent weighs the findings and decides."
+    }
+  ],
+  "tags": ["review", "verification", "fan-out"],
+  "scriptFile": "./scoped-review.workflow.js"
+}

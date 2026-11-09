@@ -1,0 +1,37 @@
+{
+  "kind": "dsh.workflow",
+  "version": 1,
+  "name": "parallel-investigation",
+  "intent": "Fan out one researcher per angle in parallel, then synthesize a single cited brief.",
+  "whenToUse": "A question needs several independent angles (docs, implementation, examples, risks) before one answer is trustworthy.",
+  "inputs": [
+    {
+      "name": "question",
+      "type": "string",
+      "required": true,
+      "description": "The question the brief must answer."
+    },
+    {
+      "name": "angles",
+      "type": "array",
+      "description": "Investigation angles. Defaults to docs, implementation, examples and risks."
+    },
+    {
+      "name": "brief",
+      "type": "string",
+      "description": "Extra instruction for the synthesizer, e.g. length or audience."
+    }
+  ],
+  "phases": [
+    {
+      "title": "Investigate",
+      "detail": "One researcher per angle, running concurrently."
+    },
+    {
+      "title": "Synthesize",
+      "detail": "One agent turns the findings into a cited brief."
+    }
+  ],
+  "tags": ["research", "fan-out", "synthesize"],
+  "scriptFile": "./parallel-investigation.workflow.js"
+}

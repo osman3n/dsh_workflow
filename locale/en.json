@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Workflow Kit",
+    "description": "Reusable, versioned workflow capsules with a registry, durable run records and a /workflows command."
+  }
+}

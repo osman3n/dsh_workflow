@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "工作流工具包",
+    "description": "可复用、带版本的 workflow 胶囊，提供注册表、持久化运行记录和 /workflows 命令。"
+  }
+}

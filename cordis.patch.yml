@@ -1,0 +1,3 @@
+- insert:
+    - id: workflow-kit
+      name: '@osman/dsh-workflow-kit'

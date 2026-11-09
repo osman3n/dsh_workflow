@@ -1,0 +1,35 @@
+{
+  "name": "@osman/dsh-workflow-kit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned, reusable workflow capsules for DeepSeek Harness: registry, durability records, and a /workflows command on top of the native workflow engine.",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib/*.js",
+    "workflows/*.workflow.json",
+    "workflows/*.workflow.js",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "cordis.patch.yml",
+    "package.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "plugin",
+    "workflow"
+  ],
+  "license": "UNLICENSED"
+}
