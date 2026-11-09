@@ -19,6 +19,7 @@ import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { createWorkflowPanelService, PANEL_MANIFEST } from './lib/panel.js';
 import { Registry } from './lib/registry.js';
 import { RunStore } from './lib/runs.js';
 import { createRunTracker } from './lib/tracker.js';
@@ -83,6 +84,49 @@ export function apply(ctx, config) {
 
   if (settings.commandEnabled) {
     registerCommand(ctx, { settings, registry, runs, resolveCwd, log });
+  }
+
+  installPanel(ctx, { registry, log });
+}
+
+/**
+ * The client panel reaches this service through the Typert gateway
+ * (`ctx.remote.workflows`), which needs both `ctx.provide` and a host
+ * manifest. `typert` is optional in headless profiles, so the install runs
+ * inside an optional dependency block.
+ */
+function installPanel(ctx, { registry, log }) {
+  const mount = (panelCtx) => {
+    const resolveCwd = () => {
+      try {
+        const sessions = serviceOf(panelCtx, 'sessions');
+        const live = sessions && typeof sessions.list === 'function' ? sessions.list() : [];
+        for (let index = live.length - 1; index >= 0; index -= 1) {
+          const cwd = candidatePath(live[index]?.header?.cwd);
+          if (cwd !== undefined) return cwd;
+        }
+      } catch {
+        // Sessions may be unavailable in headless profiles.
+      }
+      return undefined;
+    };
+
+    const service = createWorkflowPanelService({ registry, log, resolveCwd });
+    panelCtx.provide('workflows', service);
+    panelCtx.typert.register(PANEL_MANIFEST);
+    panelCtx.effect(() => () => {
+      if (typeof service.dispose === 'function') service.dispose();
+    });
+  };
+
+  if (typeof ctx.inject !== 'function') {
+    log('workflow-kit: ctx.inject is unavailable; the workflow panel stays offline');
+    return;
+  }
+  try {
+    ctx.inject(['typert'], mount);
+  } catch (error) {
+    log(`workflow-kit: cannot install the workflow panel: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

@@ -121,6 +121,22 @@ result (clipped to `maxResultChars`) and the paths of the run directory and
 The command is read-only on purpose: running a workflow is a model tool call,
 so the model can pass declared args and see the result.
 
+## Panel UI
+
+The plugin adds a **Workflows** icon to the sidebar rail (next to the other
+panel icons). It opens a page that reviews the capsules visible from the current
+workspace — name, scope, inputs, phases, tags, path and shadowing — plus invalid
+capsule files and the search directories.
+
+**New workflow** opens an authoring form (name, intent, when-to-use, body,
+overwrite). Saving goes through the host registry, so the new capsule is
+validated exactly like `workflow_save`; the panel writes to the personal scope
+(`$DSH_HOME/workflows`) because a global panel has no session workspace.
+
+The page talks to a Host service through the Typert remote gateway
+(`ctx.remote.workflows`); the same service is available to code as
+`ctx.workflows` while the panel is installed.
+
 ## Run records
 
 Every run writes one directory:
