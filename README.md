@@ -1,4 +1,4 @@
-# Workflow Kit (`@osman/dsh-workflow-kit`)
+# Workflow Kit (`@osman3n/dsh-workflow-kit`)
 
 Reusable workflow capsules for DeepSeek Harness **0.2.2-rc.1**.
 
@@ -147,7 +147,7 @@ Patch config (all optional):
 ```yaml
 - insert:
     - id: workflow-kit
-      name: '@osman/dsh-workflow-kit'
+      name: '@osman3n/dsh-workflow-kit'
       config:
         runHistoryLimit: 25
         maxResultChars: 40000
