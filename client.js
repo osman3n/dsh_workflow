@@ -134,6 +134,12 @@ window.__ModuleLoader__.load({
         searchDirs: 'Search order',
         dirExists: 'available',
         dirMissing: 'not created yet',
+        chatCreate: 'Create with chat',
+        chatCreateHint: 'Opens a chat that guides you through the workflow and saves it.',
+        chatImprove: 'Improve with chat',
+        chatImproveHint: 'Discuss changes in a chat; the assistant saves the new version.',
+        orCreateWithChat: 'Or create it with chat',
+        chatUnavailable: 'Chat is not available in this window.',
         formTitle: 'New workflow',
         formNote: 'Saves to your personal scope (DSH_HOME/workflows).',
         required: 'Required',
@@ -212,6 +218,12 @@ window.__ModuleLoader__.load({
         searchDirs: '搜索顺序',
         dirExists: '可用',
         dirMissing: '尚未创建',
+        chatCreate: '用聊天创建',
+        chatCreateHint: '打开聊天，由助手引导完成并保存工作流。',
+        chatImprove: '用聊天改进',
+        chatImproveHint: '在聊天中讨论修改；助手会保存新版本。',
+        orCreateWithChat: '或用聊天创建',
+        chatUnavailable: '此窗口不支持聊天。',
         formTitle: '新建工作流',
         formNote: '保存到个人作用域（DSH_HOME/workflows）。',
         required: '必填',
@@ -258,6 +270,14 @@ window.__ModuleLoader__.load({
       h('svg', iconProps(props), h('circle', { cx: 7, cy: 7, r: 4.25 }), h('path', { d: 'M10.2 10.2 14 14' }));
 
     const IconPlus = (props) => h('svg', iconProps(props), h('path', { d: 'M8 3v10M3 8h10' }));
+
+    const IconChat = (props) =>
+      h(
+        'svg',
+        iconProps(props),
+        h('path', { d: 'M2.5 3.2h11v7.2H8.2L4.6 13.4v-3H2.5V3.2Z' }),
+        h('path', { d: 'M5 6h6M5 8.2h4' })
+      );
 
     const IconRefresh = (props) =>
       h(
@@ -382,6 +402,10 @@ window.__ModuleLoader__.load({
 .wf-empty-title { margin:0 0 6px; font-size:15px; font-weight:600; }
 .wf-empty-body { margin:0 auto 16px; max-width:52ch; font-size:13px; line-height:1.6; color:var(--dsw-alias-label-secondary); }
 .wf-empty-small { border:0; padding:26px 20px; }
+.wf-empty-actions { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+.wf-btn-sm { padding:5px 9px; font-size:12px; }
+.wf-detail-actions { display:flex; justify-content:flex-end; padding-top:12px; }
+.wf-form-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 
 .wf-skeleton-row { display:flex; align-items:flex-start; gap:12px; padding:15px 16px; }
 .wf-skeleton-row + .wf-skeleton-row { border-top:1px solid var(--dsw-alias-border-l1); }
@@ -474,6 +498,64 @@ window.__ModuleLoader__.load({
       return h('span', { className: warn ? 'wf-pill wf-pill-warn' : 'wf-pill' }, children);
     }
 
+    const README_PATH = 'plugins/workflow-kit/README.md';
+    const EXAMPLES_PATH = 'plugins/workflow-kit/workflows/';
+
+    function trimmed(value) {
+      return String(value ?? '').trim();
+    }
+
+    function creationSeed(draft) {
+      const lines = [];
+      lines.push('You are helping me create a DSH workflow capsule (dsh.workflow v1) for this workspace.');
+      lines.push('');
+      lines.push(`Read ${README_PATH} and the examples in ${EXAMPLES_PATH} first so you use the real format.`);
+      lines.push('');
+      lines.push('Then interview me, one or two questions at a time, to pin down:');
+      lines.push('1. name — kebab-case, max 64 characters');
+      lines.push('2. intent — one sentence describing what the workflow achieves');
+      lines.push('3. whenToUse — when I should use it instead of plain chat');
+      lines.push('4. inputs — name, type (string|number|integer|boolean|array|object), required, default, description');
+      lines.push(
+        '5. script — a plain function body, NOT a module (no import/export): args, agent(), pipeline(), parallel(), phase() and log() are in scope, and the body must end with `return <json-serializable value>`.'
+      );
+      const draftLines = [];
+      if (trimmed(draft?.name)) draftLines.push(`- name: ${trimmed(draft.name)}`);
+      if (trimmed(draft?.intent)) draftLines.push(`- intent: ${trimmed(draft.intent)}`);
+      if (trimmed(draft?.whenToUse)) draftLines.push(`- when to use: ${trimmed(draft.whenToUse)}`);
+      if (trimmed(draft?.script)) {
+        const body = trimmed(draft.script)
+          .split('\n')
+          .map((line) => `    ${line}`)
+          .join('\n');
+        draftLines.push(`- body I sketched:\n${body}`);
+      }
+      if (draftLines.length > 0) {
+        lines.push('');
+        lines.push('I already started a draft in the panel:');
+        lines.push(...draftLines);
+      }
+      lines.push('');
+      lines.push(
+        'Draft the capsule and show me the script before saving. Keep it small, concrete and grounded in this repository. When I approve, save it with the workflow_save tool (personal scope unless I ask for project) and show me the saved path. After saving, stay with me for improvements.'
+      );
+      lines.push('');
+      lines.push('Start by confirming what the workflow should do, and offer 2-3 concrete ideas based on this repository.');
+      return lines.join('\n');
+    }
+
+    function improvementSeed(workflow) {
+      const name = String(workflow?.name ?? '');
+      const scope = String(workflow?.scope ?? 'personal');
+      const path = String(workflow?.path ?? '');
+      return [
+        `I want to improve an existing workflow capsule: \`${name}\` (scope: ${scope}${path ? `, path: ${path}` : ''}).`,
+        '',
+        'Read it with the workflow_show tool first. Then ask me what I want to change.',
+        'Keep its name and intent unless I ask otherwise. Show the updated script before saving, and save with workflow_save (same name and scope) only after I confirm. Finish by summarizing what changed.'
+      ].join('\n');
+    }
+
     function DetailRow({ id, label, children }) {
       return h(
         'div',
@@ -483,7 +565,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function CapsuleRow({ workflow, open, onToggle, t }) {
+    function CapsuleRow({ workflow, open, onToggle, onImprove, chatReady, t }) {
       const inputs = Array.isArray(workflow.inputs) ? workflow.inputs : [];
       const phases = Array.isArray(workflow.phases) ? workflow.phases : [];
       const tags = Array.isArray(workflow.tags) ? workflow.tags : [];
@@ -588,7 +670,30 @@ window.__ModuleLoader__.load({
           ),
           h('span', { className: 'wf-chevron', 'aria-hidden': true }, h(IconChevronDown))
         ),
-        open === true ? h('div', { className: 'wf-detail' }, h('div', { className: 'wf-detail-grid' }, rows)) : null
+        open === true
+          ? h(
+              'div',
+              { className: 'wf-detail' },
+              h('div', { className: 'wf-detail-grid' }, rows),
+              chatReady
+                ? h(
+                    'div',
+                    { className: 'wf-detail-actions' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'wf-btn wf-btn-secondary wf-btn-sm',
+                        onClick: onImprove,
+                        title: t('chatImproveHint')
+                      },
+                      h(IconChat, { size: 14 }),
+                      t('chatImprove')
+                    )
+                  )
+                : null
+            )
+          : null
       );
     }
 
@@ -612,7 +717,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function EmptyState({ t, onCreate, small, query, onClearFilters }) {
+    function EmptyState({ t, onCreate, onCreateWithChat, chatReady, small, query, onClearFilters }) {
       if (small) {
         return h(
           'div',
@@ -632,10 +737,31 @@ window.__ModuleLoader__.load({
         h('h2', { className: 'wf-empty-title' }, t('emptyTitle')),
         h('p', { className: 'wf-empty-body' }, t('emptyBody')),
         h(
-          'button',
-          { type: 'button', className: 'wf-btn wf-btn-primary', onClick: onCreate },
-          h(IconPlus),
-          t('emptyCta')
+          'div',
+          { className: 'wf-empty-actions' },
+          chatReady
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'wf-btn wf-btn-primary',
+                  onClick: onCreateWithChat,
+                  title: t('chatCreateHint')
+                },
+                h(IconChat),
+                t('chatCreate')
+              )
+            : null,
+          h(
+            'button',
+            {
+              type: 'button',
+              className: chatReady ? 'wf-btn wf-btn-secondary' : 'wf-btn wf-btn-primary',
+              onClick: onCreate
+            },
+            h(IconPlus),
+            t('newWorkflow')
+          )
         )
       );
     }
@@ -672,9 +798,12 @@ window.__ModuleLoader__.load({
       const t = props.t;
       const callRemote = props.callRemote;
       const close = props.close;
+      const openChat = props.openChat;
+      const chatReady = typeof openChat === 'function';
 
       const [state, setState] = useState({ status: 'loading', data: null, error: '' });
       const [notice, setNotice] = useState('');
+      const [chatError, setChatError] = useState('');
       const [form, setForm] = useState(null);
       const [saving, setSaving] = useState(false);
       const [formError, setFormError] = useState('');
@@ -727,6 +856,25 @@ window.__ModuleLoader__.load({
         setFormError('');
         setFieldErrors({});
       };
+      const createWithChat = (draft) => {
+        if (!chatReady) return;
+        try {
+          openChat(creationSeed(draft));
+          setChatError('');
+        } catch (error) {
+          setChatError(error instanceof Error ? error.message : String(error));
+        }
+      };
+      const improveWithChat = (workflow) => {
+        if (!chatReady) return;
+        try {
+          openChat(improvementSeed(workflow));
+          setChatError('');
+        } catch (error) {
+          setChatError(error instanceof Error ? error.message : String(error));
+        }
+      };
+
       const setField = (key) => (event) => {
         const value = event?.target?.type === 'checkbox' ? event.target.checked : event.target.value;
         setForm((current) => (current ? { ...current, [key]: value } : current));
@@ -837,7 +985,12 @@ window.__ModuleLoader__.load({
           )
         );
       } else if (workflows.length === 0) {
-        main = h(EmptyState, { t, onCreate: openForm });
+        main = h(EmptyState, {
+          t,
+          onCreate: openForm,
+          onCreateWithChat: () => createWithChat(null),
+          chatReady
+        });
       } else if (filtered.length === 0) {
         main = h(EmptyState, {
           t,
@@ -858,6 +1011,8 @@ window.__ModuleLoader__.load({
               h(CapsuleRow, {
                 key: `${workflow.scope}:${workflow.path}:${workflow.name}`,
                 workflow,
+                chatReady,
+                onImprove: () => improveWithChat(workflow),
                 t,
                 open: openName === `${workflow.scope}:${workflow.path}:${workflow.name}`,
                 onToggle: () => {
@@ -913,6 +1068,19 @@ window.__ModuleLoader__.load({
                     h(IconRefresh),
                     t('refresh')
                   ),
+                  chatReady
+                    ? h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'wf-btn wf-btn-secondary',
+                          onClick: () => createWithChat(null),
+                          title: t('chatCreateHint')
+                        },
+                        h(IconChat),
+                        t('chatCreate')
+                      )
+                    : null,
                   h(
                     'button',
                     { type: 'button', className: 'wf-btn wf-btn-primary', onClick: openForm },
@@ -927,6 +1095,14 @@ window.__ModuleLoader__.load({
                 { className: 'wf-banner wf-banner-success', role: 'status', style: { marginTop: 18 } },
                 h('span', { className: 'wf-banner-icon' }, h(IconCheck, { size: 15 })),
                 h('span', { className: 'wf-banner-text' }, notice)
+              )
+            : null,
+          chatError
+            ? h(
+                'div',
+                { className: 'wf-banner wf-banner-error', role: 'alert', style: { marginTop: 18 } },
+                h('span', { className: 'wf-banner-icon' }, h(IconAlert, { size: 15 })),
+                h('span', { className: 'wf-banner-text' }, `${t('chatUnavailable')}\n${chatError}`)
               )
             : null,
           form ? renderForm() : renderList()
@@ -1056,7 +1232,23 @@ window.__ModuleLoader__.load({
             'div',
             { className: 'wf-form-head' },
             h('h2', { className: 'wf-form-title' }, t('formTitle')),
-            h('span', { className: 'wf-form-note' }, t('formNote'))
+            h(
+              'div',
+              { className: 'wf-form-meta' },
+              h('span', { className: 'wf-form-note' }, t('formNote')),
+              chatReady
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'wf-btn wf-btn-ghost wf-btn-sm',
+                      onClick: () => createWithChat(form)
+                    },
+                    h(IconChat, { size: 14 }),
+                    t('orCreateWithChat')
+                  )
+                : null
+            )
           ),
           h(
             'div',
@@ -1151,10 +1343,18 @@ window.__ModuleLoader__.load({
     /* -------------------------------------------------------------- register */
 
     return {
-      inject: ['slots', 'locale', 'remote', 'layout'],
+      inject: ['slots', 'locale', 'remote', 'layout', 'uiWorkspace'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, DICTS), 'workflow-kit: panel strings');
         const t = ctx.locale.bind(NS);
+
+        const uiWorkspace = ctx.uiWorkspace;
+        const openChat = (seed) => {
+          if (!uiWorkspace || typeof uiWorkspace.startSession !== 'function') {
+            throw new Error('uiWorkspace.startSession is unavailable');
+          }
+          uiWorkspace.startSession(undefined, { prompt: seed, whenDraftExists: 'replace' });
+        };
 
         let mounted;
         const ensureMounted = () => {
@@ -1181,7 +1381,7 @@ window.__ModuleLoader__.load({
           if (layout && typeof layout.selectPanel === 'function') layout.selectPanel(null);
         };
 
-        const Page = () => h(WorkflowPanelPage, { t, callRemote, close });
+        const Page = () => h(WorkflowPanelPage, { t, callRemote, close, openChat });
 
         ctx.slots.inject('sidebar.panellist', () =>
           ctx.slots.register(
