@@ -135,11 +135,26 @@ window.__ModuleLoader__.load({
         dirExists: 'available',
         dirMissing: 'not created yet',
         chatCreate: 'Create with chat',
-        chatCreateHint: 'Opens a chat that guides you through the workflow and saves it.',
+        chatCreateHint: 'Shows a short guide first; the chat opens only when you choose it.',
         chatImprove: 'Improve with chat',
-        chatImproveHint: 'Discuss changes in a chat; the assistant saves the new version.',
+        chatImproveHint: 'Shows a short improvement guide first; you decide when to open the chat.',
         orCreateWithChat: 'Or create it with chat',
         chatUnavailable: 'Chat is not available in this window.',
+        chatGuideTitle: 'Create with chat',
+        chatGuideImproveTitle: 'Improve with chat',
+        chatGuideBody:
+          'Chat authoring opens a real conversation where the assistant reads the workflow docs, asks a few questions, and saves the capsule for you. Nothing is sent until you press Enter.',
+        chatGuideCommandsTitle: 'You can also run this command in any conversation',
+        chatGuideCmdList: '/workflows — list capsules',
+        chatGuideCmdNew: '/workflows new — authoring brief',
+        chatGuideCmdImprove: '/workflows improve <name> — improvement brief',
+        chatGuideStarter: 'Starter message',
+        chatGuideCopy: 'Copy starter',
+        chatGuideCopied: 'Copied',
+        chatGuideOpen: 'Open chat',
+        chatGuideClose: 'Close',
+        chatGuideNote: 'You can keep reviewing capsules here; the chat opens only when you choose it.',
+        clipboardUnavailable: 'Clipboard is unavailable in this window.',
         formTitle: 'New workflow',
         formNote: 'Saves to your personal scope (DSH_HOME/workflows).',
         required: 'Required',
@@ -219,11 +234,26 @@ window.__ModuleLoader__.load({
         dirExists: '可用',
         dirMissing: '尚未创建',
         chatCreate: '用聊天创建',
-        chatCreateHint: '打开聊天，由助手引导完成并保存工作流。',
+        chatCreateHint: '先显示简短说明；只有你确认后才打开聊天。',
         chatImprove: '用聊天改进',
-        chatImproveHint: '在聊天中讨论修改；助手会保存新版本。',
+        chatImproveHint: '先显示改进说明；由你决定何时打开聊天。',
         orCreateWithChat: '或用聊天创建',
         chatUnavailable: '此窗口不支持聊天。',
+        chatGuideTitle: '用聊天创建',
+        chatGuideImproveTitle: '用聊天改进',
+        chatGuideBody:
+          '聊天创作会打开一个真实对话：助手会阅读工作流文档、问几个问题，然后为你保存胶囊。按下 Enter 之前不会发送任何内容。',
+        chatGuideCommandsTitle: '也可以在任何对话中运行此命令',
+        chatGuideCmdList: '/workflows — 列出胶囊',
+        chatGuideCmdNew: '/workflows new — 创作说明',
+        chatGuideCmdImprove: '/workflows improve <name> — 改进说明',
+        chatGuideStarter: '起始消息',
+        chatGuideCopy: '复制起始消息',
+        chatGuideCopied: '已复制',
+        chatGuideOpen: '打开聊天',
+        chatGuideClose: '关闭',
+        chatGuideNote: '你可以继续在这里查看胶囊；只有你确认后聊天才会打开。',
+        clipboardUnavailable: '此窗口无法使用剪贴板。',
         formTitle: '新建工作流',
         formNote: '保存到个人作用域（DSH_HOME/workflows）。',
         required: '必填',
@@ -405,6 +435,14 @@ window.__ModuleLoader__.load({
 .wf-empty-actions { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
 .wf-btn-sm { padding:5px 9px; font-size:12px; }
 .wf-detail-actions { display:flex; justify-content:flex-end; padding-top:12px; }
+.wf-guide { margin-top:20px; padding:20px; border:1px solid var(--dsw-alias-border-l1); border-radius:14px; background:var(--dsw-alias-bg-base); }
+.wf-guide-title { margin:0 0 8px; font-size:15px; font-weight:600; color:var(--dsw-alias-label-primary); }
+.wf-guide-body { margin:0; font-size:13px; line-height:1.55; color:var(--dsw-alias-label-secondary); }
+.wf-guide-label { margin:16px 0 0; font-size:12px; font-weight:600; color:var(--dsw-alias-label-primary); }
+.wf-cmd-list { display:grid; gap:6px; margin-top:8px; }
+.wf-cmd { display:block; padding:6px 9px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; color:var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-layer-1); border:1px solid var(--dsw-alias-border-l1); border-radius:8px; white-space:pre-wrap; }
+.wf-guide-seed { margin:8px 0 0; padding:10px; max-height:150px; overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; white-space:pre-wrap; color:var(--dsw-alias-label-secondary); background:var(--dsw-alias-bg-layer-1); border:1px solid var(--dsw-alias-border-l1); border-radius:10px; }
+.wf-guide-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; margin-top:18px; }
 .wf-form-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 
 .wf-skeleton-row { display:flex; align-items:flex-start; gap:12px; padding:15px 16px; }
@@ -804,6 +842,8 @@ window.__ModuleLoader__.load({
       const [state, setState] = useState({ status: 'loading', data: null, error: '' });
       const [notice, setNotice] = useState('');
       const [chatError, setChatError] = useState('');
+      const [chatGuide, setChatGuide] = useState(null);
+      const [copied, setCopied] = useState(false);
       const [form, setForm] = useState(null);
       const [saving, setSaving] = useState(false);
       const [formError, setFormError] = useState('');
@@ -856,20 +896,39 @@ window.__ModuleLoader__.load({
         setFormError('');
         setFieldErrors({});
       };
-      const createWithChat = (draft) => {
+      const requestChat = (draft, workflow) => {
         if (!chatReady) return;
+        setChatError('');
+        setCopied(false);
+        setChatGuide({
+          seed: workflow ? improvementSeed(workflow) : creationSeed(draft),
+          workflow: workflow ?? null
+        });
+      };
+      const closeGuide = () => {
+        setChatGuide(null);
+        setCopied(false);
+      };
+      const copyStarter = () => {
+        const seed = chatGuide ? chatGuide.seed : '';
         try {
-          openChat(creationSeed(draft));
-          setChatError('');
+          if (typeof navigator === 'undefined' || !navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+            throw new Error(t('clipboardUnavailable'));
+          }
+          navigator.clipboard.writeText(seed).then(
+            () => setCopied(true),
+            (error) => setChatError(error instanceof Error ? error.message : String(error))
+          );
         } catch (error) {
           setChatError(error instanceof Error ? error.message : String(error));
         }
       };
-      const improveWithChat = (workflow) => {
-        if (!chatReady) return;
+      const openRequestedChat = () => {
+        if (!chatGuide || !chatReady) return;
         try {
-          openChat(improvementSeed(workflow));
+          openChat(chatGuide.seed);
           setChatError('');
+          closeGuide();
         } catch (error) {
           setChatError(error instanceof Error ? error.message : String(error));
         }
@@ -988,7 +1047,7 @@ window.__ModuleLoader__.load({
         main = h(EmptyState, {
           t,
           onCreate: openForm,
-          onCreateWithChat: () => createWithChat(null),
+          onCreateWithChat: () => requestChat(null),
           chatReady
         });
       } else if (filtered.length === 0) {
@@ -1012,7 +1071,7 @@ window.__ModuleLoader__.load({
                 key: `${workflow.scope}:${workflow.path}:${workflow.name}`,
                 workflow,
                 chatReady,
-                onImprove: () => improveWithChat(workflow),
+                onImprove: () => requestChat(null, workflow),
                 t,
                 open: openName === `${workflow.scope}:${workflow.path}:${workflow.name}`,
                 onToggle: () => {
@@ -1052,7 +1111,7 @@ window.__ModuleLoader__.load({
               h('h1', { className: 'wf-title' }, t('panelTitle')),
               h('p', { className: 'wf-sub' }, t('subtitle'))
             ),
-            form
+            form || chatGuide
               ? null
               : h(
                   'div',
@@ -1074,7 +1133,7 @@ window.__ModuleLoader__.load({
                         {
                           type: 'button',
                           className: 'wf-btn wf-btn-secondary',
-                          onClick: () => createWithChat(null),
+                          onClick: () => requestChat(null),
                           title: t('chatCreateHint')
                         },
                         h(IconChat),
@@ -1102,12 +1161,55 @@ window.__ModuleLoader__.load({
                 'div',
                 { className: 'wf-banner wf-banner-error', role: 'alert', style: { marginTop: 18 } },
                 h('span', { className: 'wf-banner-icon' }, h(IconAlert, { size: 15 })),
-                h('span', { className: 'wf-banner-text' }, `${t('chatUnavailable')}\n${chatError}`)
+                h('span', { className: 'wf-banner-text' }, chatError)
               )
             : null,
-          form ? renderForm() : renderList()
+          chatGuide ? renderGuide() : form ? renderForm() : renderList()
         )
       );
+
+      function renderGuide() {
+        const guide = chatGuide;
+        if (!guide) return null;
+        const improving = guide.workflow !== null && guide.workflow !== undefined;
+        return h(
+          'section',
+          { className: 'wf-guide', 'aria-labelledby': 'wf-guide-title' },
+          h(
+            'h2',
+            { id: 'wf-guide-title', className: 'wf-guide-title' },
+            t(improving ? 'chatGuideImproveTitle' : 'chatGuideTitle')
+          ),
+          h('p', { className: 'wf-guide-body' }, t('chatGuideBody')),
+          h('p', { className: 'wf-guide-label' }, t('chatGuideCommandsTitle')),
+          h(
+            'div',
+            { className: 'wf-cmd-list' },
+            h('code', { className: 'wf-cmd' }, t('chatGuideCmdList')),
+            h('code', { className: 'wf-cmd' }, t('chatGuideCmdNew')),
+            h('code', { className: 'wf-cmd' }, t('chatGuideCmdImprove'))
+          ),
+          h('p', { className: 'wf-guide-label' }, t('chatGuideStarter')),
+          h('pre', { className: 'wf-guide-seed' }, guide.seed),
+          h('p', { className: 'wf-guide-body', style: { marginTop: 12 } }, t('chatGuideNote')),
+          h(
+            'div',
+            { className: 'wf-guide-actions' },
+            h('button', { type: 'button', className: 'wf-btn wf-btn-ghost', onClick: closeGuide }, t('chatGuideClose')),
+            h(
+              'button',
+              { type: 'button', className: 'wf-btn wf-btn-secondary', onClick: copyStarter },
+              copied ? t('chatGuideCopied') : t('chatGuideCopy')
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'wf-btn wf-btn-primary', onClick: openRequestedChat },
+              h(IconChat, { size: 14 }),
+              t('chatGuideOpen')
+            )
+          )
+        );
+      }
 
       function renderList() {
         return h(
@@ -1242,7 +1344,7 @@ window.__ModuleLoader__.load({
                     {
                       type: 'button',
                       className: 'wf-btn wf-btn-ghost wf-btn-sm',
-                      onClick: () => createWithChat(form)
+                      onClick: () => requestChat(form)
                     },
                     h(IconChat, { size: 14 }),
                     t('orCreateWithChat')

@@ -112,6 +112,8 @@ result (clipped to `maxResultChars`) and the paths of the run directory and
 ```
 /workflows                list capsules (alias: list)
 /workflows show <name>    contract, inputs, paths, last run
+/workflows new [goal]     short guide for authoring a capsule in chat
+/workflows improve <name> short guide for improving one in chat
 /workflows runs [n]       recent run records
 /workflows dirs           search directories, with existence
 /workflows prune [keep]   delete old run records
@@ -133,14 +135,17 @@ overwrite). Saving goes through the host registry, so the new capsule is
 validated exactly like `workflow_save`; the panel writes to the personal scope
 (`$DSH_HOME/workflows`) because a global panel has no session workspace.
 
-**Create with chat** hands the job to a real conversation instead: the panel
-opens a workspace session with a starter prompt already filled in. The prompt
-asks the agent to read this README and the examples in `workflows/`, interview
-you for name, intent, when-to-use, inputs and the script body, show the draft,
-and only then save it with `workflow_save`. Every expanded capsule also gets an
-**Improve with chat** action whose prompt references that capsule by name, scope
-and path, so the agent can `workflow_show` it, discuss changes and save the
-improved version.
+**Create with chat** and **Improve with chat** show a short guide first; nothing
+opens until you choose **Open chat**. The guide explains what will happen, lists
+the same guidance as `/workflows new [goal]` and `/workflows improve <name>`, and
+shows the starter message that will be placed in the composer. **Open chat** then
+opens a workspace session with that starter prompt filled in — the panel never
+navigates on its own. The prompt asks the agent to read this README and the
+examples in `workflows/`, interview you for name, intent, when-to-use, inputs and
+the script body, show the draft, and only then save it with `workflow_save`.
+Every expanded capsule gets the **Improve with chat** action, whose prompt
+references that capsule by name, scope and path so the agent can `workflow_show`
+it, discuss changes and save the improved version.
 
 The page talks to a Host service through the Typert remote gateway
 (`ctx.remote.workflows`); the same service is available to code as

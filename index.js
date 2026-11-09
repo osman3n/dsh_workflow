@@ -48,6 +48,8 @@ const HELP = [
   '',
   '  /workflows list              capsules visible from this workspace',
   '  /workflows show <name>       contract, inputs and paths of one capsule',
+  '  /workflows new [goal]        short guide for authoring a capsule in chat',
+  '  /workflows improve <name>    short guide for improving one in chat',
   '  /workflows runs [n]          recent durable run records (default 10)',
   '  /workflows dirs              search directories and whether they exist',
   '  /workflows prune [keep]      delete old run records (default from config)',
@@ -245,7 +247,7 @@ function registerCommand(ctx, { settings, registry, runs, resolveCwd, log }) {
     commands.register({
       name: settings.commandName,
       description: 'List, inspect and prune reusable workflow capsules (dsh.workflow v1).',
-      input: { hint: '[list | show <name> | runs [n] | dirs | prune [keep] | help]' },
+      input: { hint: '[list | show <name> | new [goal] | improve <name> | runs [n] | dirs | prune [keep] | help]' },
       async handler(invocation) {
         const cwd = resolveCwd(invocation?.agent);
         const words = String(invocation?.rawInput ?? '')
@@ -262,6 +264,11 @@ function registerCommand(ctx, { settings, registry, runs, resolveCwd, log }) {
               return ok(await renderList(registry, runs, cwd));
             case 'show':
               return await renderShow(registry, runs, cwd, rest[0]);
+            case 'new':
+            case 'create':
+              return ok(renderAuthoringGuide(rest.join(' ')));
+            case 'improve':
+              return await renderImproveGuide(registry, cwd, rest[0]);
             case 'runs':
               return ok(await renderRuns(runs, cwd, rest[0]));
             case 'dirs':
@@ -341,6 +348,51 @@ async function renderShow(registry, runs, cwd, name) {
   if (record) lines.push(`  last run: ${record.id} ${record.status} ${record.startedAt} (${record.dir})`);
 
   return { kind: 'success', text: lines.join('\n') };
+}
+
+function renderAuthoringGuide(goalText) {
+  const goal = String(goalText ?? '').trim().slice(0, 200);
+  const lines = [
+    'Author a workflow in chat',
+    '',
+    '  1. Send a chat message describing the workflow you want — one or two sentences is enough.',
+    '  2. The assistant reads plugins/workflow-kit/README.md and the examples in plugins/workflow-kit/workflows/, then interviews you for name, intent, when to use, inputs and the script body.',
+    '  3. It saves the capsule with the workflow_save tool. Saved from a chat without a workspace, the capsule goes to personal scope ($DSH_HOME/workflows).',
+    '',
+    '  Script body: plain JavaScript, no top-level import/export. agent(), pipeline(), phase(), log() and args are in scope; return JSON-serializable data.',
+    '  After saving: /workflows show <name> reviews the contract, /workflows improve <name> starts an improvement brief.'
+  ];
+  lines.push(
+    '',
+    goal === '' ? '  Starter: "Help me create a workflow that ..."' : `  Starter: "Help me create a workflow that ${goal}"`
+  );
+  return lines.join('\n');
+}
+
+async function renderImproveGuide(registry, cwd, nameText) {
+  const wanted = String(nameText ?? '').trim();
+  if (wanted === '') return { kind: 'error', text: `usage: /workflows improve <name>\n\n${HELP}` };
+
+  let capsule;
+  try {
+    capsule = await registry.load(wanted, cwd);
+  } catch (error) {
+    return { kind: 'error', text: error instanceof Error ? error.message : String(error) };
+  }
+
+  return {
+    kind: 'success',
+    text: [
+      `Improve ${capsule.name}  [${capsule.scope}]`,
+      '',
+      `  In chat, say: "Improve the ${capsule.name} workflow: <what should change>."`,
+      '  The assistant can review it with workflow_show and save the new version with workflow_save.',
+      '',
+      `  capsule: ${capsule.sourcePath}`,
+      `  inputs:  ${describeInputs(capsule.inputs)}`,
+      `  review:  /workflows show ${capsule.name}`
+    ].join('\n')
+  };
 }
 
 async function renderRuns(runs, cwd, countText) {
