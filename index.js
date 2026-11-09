@@ -91,32 +91,50 @@ export function apply(ctx, config) {
 
 /**
  * The client panel reaches this service through the Typert gateway
- * (`ctx.remote.workflows`), which needs both `ctx.provide` and a host
- * manifest. `typert` is optional in headless profiles, so the install runs
- * inside an optional dependency block.
+ * (`ctx.remote.workflows`), which resolves the service from the Host root
+ * Context. `ctx.provide` therefore has to run on the plugin Context itself:
+ * a service donated inside `ctx.inject`'s child Context stays scoped to the
+ * plugin and is invisible to the gateway. `typert` is optional in headless
+ * profiles, so only the manifest registration waits for it.
  */
 function installPanel(ctx, { registry, log }) {
-  const mount = (panelCtx) => {
-    const resolveCwd = () => {
-      try {
-        const sessions = serviceOf(panelCtx, 'sessions');
-        const live = sessions && typeof sessions.list === 'function' ? sessions.list() : [];
-        for (let index = live.length - 1; index >= 0; index -= 1) {
-          const cwd = candidatePath(live[index]?.header?.cwd);
-          if (cwd !== undefined) return cwd;
-        }
-      } catch {
-        // Sessions may be unavailable in headless profiles.
+  const resolveCwd = () => {
+    try {
+      const sessions = serviceOf(ctx, 'sessions');
+      const live = sessions && typeof sessions.list === 'function' ? sessions.list() : [];
+      for (let index = live.length - 1; index >= 0; index -= 1) {
+        const cwd = candidatePath(live[index]?.header?.cwd);
+        if (cwd !== undefined) return cwd;
       }
-      return undefined;
-    };
+    } catch {
+      // Sessions may be unavailable in headless profiles.
+    }
+    return undefined;
+  };
 
-    const service = createWorkflowPanelService({ registry, log, resolveCwd });
-    panelCtx.provide('workflows', service);
-    panelCtx.typert.register(PANEL_MANIFEST);
-    panelCtx.effect(() => () => {
-      if (typeof service.dispose === 'function') service.dispose();
-    });
+  const service = createWorkflowPanelService({ registry, log, resolveCwd });
+  try {
+    ctx.provide('workflows', service);
+  } catch (error) {
+    log(
+      `workflow-kit: cannot provide the workflow panel service: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+
+  const registerManifest = (typertCtx) => {
+    try {
+      const typert = typertCtx.typert ?? (typeof typertCtx.get === 'function' ? typertCtx.get('typert') : undefined);
+      if (typert === undefined) return;
+      // The Typert registry is application-global and outlives one plugin
+      // instance; a reload after editing must not re-register the same face.
+      if (typeof typert.getPackage === 'function' && typert.getPackage(PANEL_MANIFEST.package, 'host')) return;
+      typert.register(PANEL_MANIFEST);
+    } catch (error) {
+      log(
+        `workflow-kit: cannot register the workflow panel manifest: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   };
 
   if (typeof ctx.inject !== 'function') {
@@ -124,7 +142,7 @@ function installPanel(ctx, { registry, log }) {
     return;
   }
   try {
-    ctx.inject(['typert'], mount);
+    ctx.inject(['typert'], registerManifest);
   } catch (error) {
     log(`workflow-kit: cannot install the workflow panel: ${error instanceof Error ? error.message : String(error)}`);
   }
